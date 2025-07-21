@@ -1,4 +1,4 @@
-package com.comviva
+package com.comviva.mds
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

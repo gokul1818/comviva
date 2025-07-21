@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "125242088403",
+    "project_id": "mds-development-8f1bf",
+    "storage_bucket": "mds-development-8f1bf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:125242088403:android:4240542bf6e3d519646d26",
+        "android_client_info": {
+          "package_name": "com.comviva.mds"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBF1-NK9T98KEYUDTfvocraX3gGvJfsVd8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

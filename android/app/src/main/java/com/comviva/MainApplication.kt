@@ -1,4 +1,4 @@
-package com.comviva
+package com.comviva.mds
 
 import android.app.Application
 import com.facebook.react.PackageList
