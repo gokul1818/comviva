@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, {useCallback, useState} from 'react';
 import {
   View,
   Text,
@@ -7,66 +7,62 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
-import { getAnalytics, logEvent } from '@react-native-firebase/analytics';
-import { getApp } from '@react-native-firebase/app';
+import {getAnalytics, logEvent} from '@react-native-firebase/analytics';
+import {getApp} from '@react-native-firebase/app';
 import database from '@react-native-firebase/database';
 import DeviceInfo from 'react-native-device-info';
 import AsyncStorage from '@react-native-community/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
+import {useFocusEffect} from '@react-navigation/native';
 
-const CreateAccountScreen = ({ navigation }) => {
+const CreateAccountScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
 
-const handleSignup = async () => {
-  try {
-    const analytics = getAnalytics(getApp());
-    const deviceId = await DeviceInfo.getUniqueId();
-    const timestamp = Date.now();
-    const fcmToken = await AsyncStorage.getItem('fcmToken');
+  const handleSignup = async () => {
+    try {
+      const analytics = getAnalytics(getApp());
+      const deviceId = await DeviceInfo.getUniqueId();
+      const timestamp = Date.now();
+      const fcmToken = await AsyncStorage.getItem('fcmToken');
 
-    // Replace '.' and '@' to make email safe for Firebase key
-    const formatEmailKey = (email: string) => email.replace(/\./g, '_').replace(/@/g, '_');
-    const emailKey = formatEmailKey(email).toLowerCase();
+      // Replace '.' and '@' to make email safe for Firebase key
+      const formatEmailKey = (email: string) =>
+        email.replace(/\./g, '_').replace(/@/g, '_');
+      const emailKey = formatEmailKey(email).toLowerCase();
 
-    const userRef = database().ref(`users/${emailKey}`);
-    const snapshot = await userRef.once('value');
+      const userRef = database().ref(`users/${emailKey}`);
+      const snapshot = await userRef.once('value');
 
-    const customEvent = {
-      id: deviceId,
-      deviceId: deviceId || 'unknown_device',
-      email: email.toLowerCase() || 'no_email',
-      name: name || 'no_name',
-      event: 'signups',
-      fcmToken: fcmToken || '',
-      timestamp,
-    };
+      const customEvent = {
+        id: deviceId,
+        deviceId: deviceId || 'unknown_device',
+        email: email.toLowerCase() || 'no_email',
+        name: name || 'no_name',
+        event: 'signups',
+        fcmToken: fcmToken || '',
+        timestamp,
+      };
 
-    if (snapshot.exists()) {
-      Alert.alert('User Exists', 'An account with this email already exists.');
-      return;
+      if (snapshot.exists()) {
+        Alert.alert(
+          'User Exists',
+          'An account with this email already exists.',
+        );
+        return;
+      }
+
+      // Save new user data
+      await userRef.set(customEvent);
+      console.log('✅ New signup event created.');
+
+      Alert.alert('Success', 'Account created successfully.');
+      navigation.navigate('Login');
+    } catch (err) {
+      console.error('❌ Error logging signup:', err);
+      Alert.alert('Error', 'Account creation failed.');
     }
-
-    // Log signup event in Firebase Analytics
-    await logEvent(analytics, 'signups', {
-      email,
-      deviceId,
-      fcmToken,
-    });
-
-    // Save new user data
-    await userRef.set(customEvent);
-    console.log('✅ New signup event created.');
-
-    Alert.alert('Success', 'Account created successfully.');
-    navigation.navigate('Login');
-  } catch (err) {
-    console.error('❌ Error logging signup:', err);
-    Alert.alert('Error', 'Account creation failed.');
-  }
-};
-
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -81,11 +77,12 @@ const handleSignup = async () => {
 
           if (!snapshot.exists()) {
             await logEvent(analytics, 'signup_screen');
-            await screenRef.set({ timestamp });
+            await screenRef.set({timestamp});
             console.log('✅ Signup screen event logged');
           } else {
+            await screenRef.update({timestamp});
             console.log(
-              'ℹ️ Signup screen event already exists for this device.'
+              'ℹ️ Signup screen event already exists for this device.',
             );
           }
         } catch (err) {
@@ -94,7 +91,7 @@ const handleSignup = async () => {
       };
 
       logSignupScreenEvent();
-    }, [])
+    }, []),
   );
 
   return (

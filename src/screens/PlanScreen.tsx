@@ -1,20 +1,20 @@
-import React, {useCallback} from 'react';
+import AsyncStorage from '@react-native-community/async-storage';
+import { getAnalytics } from '@react-native-firebase/analytics';
+import { getApp } from '@react-native-firebase/app';
+import database from '@react-native-firebase/database';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback } from 'react';
 import {
-  View,
+  Alert,
+  FlatList,
+  Platform,
+  StatusBar,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  Alert,
-  StyleSheet,
-  FlatList,
-  StatusBar,
-  Platform,
+  View,
 } from 'react-native';
-import {getAnalytics, logEvent} from '@react-native-firebase/analytics';
-import {getApp} from '@react-native-firebase/app';
-import database from '@react-native-firebase/database';
 import DeviceInfo from 'react-native-device-info';
-import {useFocusEffect} from '@react-navigation/native';
-import AsyncStorage from '@react-native-community/async-storage';
 
 const plans = [
   {id: '1', name: 'Basic Plan', price: 99},
@@ -37,10 +37,11 @@ const PlanScreen = () => {
           const snapshot = await screenRef.once('value');
 
           if (!snapshot.exists()) {
-            await logEvent(analytics, 'plan_screen_event');
+            // await logEvent(analytics, 'plan_screen_event');
             await screenRef.set({timestamp});
             console.log('✅ Login screen event logged');
           } else {
+             await screenRef.update({timestamp});
             console.log(
               'ℹ️ Login screen event already exists for this device.',
             );
@@ -60,7 +61,7 @@ const PlanScreen = () => {
     price: number;
   }) => {
     try {
-      const analytics = getAnalytics(getApp());
+      // const analytics = getAnalytics(getApp());
       const deviceId = await DeviceInfo.getUniqueId();
       const fcmToken = await AsyncStorage.getItem('fcmToken');
       const emailKey = await AsyncStorage.getItem('emailKey'); // get email-safe key
@@ -76,21 +77,21 @@ const PlanScreen = () => {
       }
 
       // 🔥 Log to Firebase Analytics
-      await logEvent(analytics, 'purchase_event', {
-        item: plan.name,
-        price: plan.price,
-      });
+      // await logEvent(analytics, 'purchase_event', {
+      //   item: plan.name,
+      //   price: plan.price,
+      // });
 
-      await logEvent(analytics, 'purchase_success_event', {
-        success: true,
-        transaction_id: transactionId,
-      });
+      // await logEvent(analytics, 'purchase_success_event', {
+      //   success: true,
+      //   transaction_id: transactionId,
+      // });
 
       // 📝 Save to Firebase Realtime Database under a fixed path
       await database()
         .ref(`/events/purchases/${emailKey}`)
         .set({
-          event: 'purchase_success_event',
+          event: 'purchase_success',
           planName: plan.name,
           price: plan.price,
           transactionId,

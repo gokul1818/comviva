@@ -1,19 +1,19 @@
-import React, {useCallback} from 'react';
+import AsyncStorage from '@react-native-community/async-storage';
+import { getAnalytics } from '@react-native-firebase/analytics';
+import { getApp } from '@react-native-firebase/app';
+import database from '@react-native-firebase/database';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback } from 'react';
 import {
-  View,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  StatusBar,
-  ScrollView,
-  Platform,
+  View,
 } from 'react-native';
-import {getAnalytics, logEvent} from '@react-native-firebase/analytics';
-import {getApp} from '@react-native-firebase/app';
-import database from '@react-native-firebase/database';
 import DeviceInfo from 'react-native-device-info';
-import {useFocusEffect} from '@react-navigation/native';
-import AsyncStorage from '@react-native-community/async-storage';
 
 const HomeScreen = ({navigation}) => {
   useFocusEffect(
@@ -27,19 +27,20 @@ const HomeScreen = ({navigation}) => {
           const emailKey = await AsyncStorage.getItem('emailKey');
 
           // ✅ Log to Firebase Analytics
-          await logEvent(analytics, 'home_screen', {
-            deviceId,
-            fcmToken,
-          });
+          // await logEvent(analytics, 'home_screen', {
+          //   deviceId,
+          //   fcmToken,
+          // });
 
           // ✅ Log to Realtime DB: screens/HomeScreen/{deviceId}
-          const screenRef = database().ref(`/screens/HomeScreen/${deviceId}`);
+          const screenRef = database().ref(`/screens/HomeScreen/${emailKey}`);
           const screenSnapshot = await screenRef.once('value');
 
           if (!screenSnapshot.exists()) {
             await screenRef.set({timestamp});
             console.log('✅ Home screen visit logged in /screens');
           } else {
+            await screenRef.update({timestamp});
             console.log('ℹ️ Home screen already logged in /screens.');
           }
 

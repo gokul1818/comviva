@@ -1,18 +1,16 @@
-import React, {useCallback, useState} from 'react';
+import AsyncStorage from '@react-native-community/async-storage';
+import database from '@react-native-firebase/database';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
 import {
-  View,
+  Alert,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
-  StyleSheet,
+  View,
 } from 'react-native';
-import {getAnalytics, logEvent} from '@react-native-firebase/analytics';
-import {getApp} from '@react-native-firebase/app';
-import database from '@react-native-firebase/database';
 import DeviceInfo from 'react-native-device-info';
-import AsyncStorage from '@react-native-community/async-storage';
-import {useFocusEffect} from '@react-navigation/native';
 
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
@@ -20,7 +18,7 @@ const LoginScreen = ({navigation}) => {
 
   const handleLogin = async () => {
     try {
-      const analytics = getAnalytics(getApp());
+      // const analytics = getAnalytics(getApp());
       const deviceId = await DeviceInfo.getUniqueId();
       const timestamp = Date.now();
       const fcmToken = await AsyncStorage.getItem('fcmToken');
@@ -41,11 +39,11 @@ const LoginScreen = ({navigation}) => {
       }
 
       // ✅ User exists, proceed with login tracking
-      await logEvent(analytics, 'logins', {
-        email,
-        deviceId,
-        fcmToken,
-      });
+      // await logEvent(analytics, 'logins', {
+      //   email,
+      //   deviceId,
+      //   fcmToken,
+      // });
 
       const loginRef = database().ref(`events/logins/${emailKey}`);
       const loginSnapshot = await loginRef.once('value');
@@ -80,17 +78,18 @@ const LoginScreen = ({navigation}) => {
       const logLoginScreenEvent = async () => {
         try {
           const deviceId = await DeviceInfo.getUniqueId();
-          const analytics = getAnalytics(getApp());
+          // const analytics = getAnalytics(getApp());
           const timestamp = Date.now();
           const screenRef = database().ref(`/screens/loginScreen/${deviceId}`);
 
           const snapshot = await screenRef.once('value');
 
           if (!snapshot.exists()) {
-            await logEvent(analytics, 'logins');
+            // await logEvent(analytics, 'logins');
             await screenRef.set({timestamp});
             console.log('✅ Login screen event logged');
           } else {
+             await screenRef.update({timestamp});
             console.log(
               'ℹ️ Login screen event already exists for this device.',
             );

@@ -1,19 +1,19 @@
-import React, {useCallback} from 'react';
+import AsyncStorage from '@react-native-community/async-storage';
+import { getAnalytics } from '@react-native-firebase/analytics';
+import { getApp } from '@react-native-firebase/app';
+import database from '@react-native-firebase/database';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback } from 'react';
 import {
-  View,
+  Alert,
+  Platform,
+  StatusBar,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  Alert,
-  StyleSheet,
-  StatusBar,
-  Platform,
+  View,
 } from 'react-native';
-import {getAnalytics, logEvent} from '@react-native-firebase/analytics';
-import {getApp} from '@react-native-firebase/app';
-import database from '@react-native-firebase/database';
 import DeviceInfo from 'react-native-device-info';
-import {useFocusEffect} from '@react-navigation/native';
-import AsyncStorage from '@react-native-community/async-storage';
 
 const RechargeScreen = () => {
 
@@ -22,17 +22,14 @@ useFocusEffect(
     const logRechargeScreenEvent = async () => {
       try {
         const deviceId = await DeviceInfo.getUniqueId();
-        const analytics = getAnalytics(getApp());
         const timestamp = Date.now();
         const screenRef = database().ref(`/screens/rechargeScreen/${deviceId}`);
-
         const snapshot = await screenRef.once('value');
-
         if (!snapshot.exists()) {
-          await logEvent(analytics, 'recharge_screen_event');
           await screenRef.set({timestamp});
           console.log('✅ Login screen event logged');
         } else {
+             await screenRef.update({timestamp});
           console.log('ℹ️ Login screen event already exists for this device.');
         }
       } catch (err) {
@@ -62,18 +59,18 @@ const handleRecharge = async () => {
     const method = 'credit_card';
 
     // 🔥 Log to Firebase Analytics
-    await logEvent(analytics, 'recharge_event', {
-      emailKey,
-      amount,
-      method,
-      transactionId,
-    });
+    // await logEvent(analytics, 'recharge_event', {
+    //   emailKey,
+    //   amount,
+    //   method,
+    //   transactionId,
+    // });
 
     // 📝 Save to Realtime Database using set (replace existing if exists)
     await database()
       .ref(`/events/recharges/${emailKey}`)
       .set({
-        event: 'recharge_event',
+        event: 'recharge_success',
         amount,
         method,
         transactionId,
