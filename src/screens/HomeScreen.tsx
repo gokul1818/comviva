@@ -1,58 +1,123 @@
-import React, {useEffect} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, StatusBar} from 'react-native';
+import React, {useCallback} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import {getAnalytics, logEvent} from '@react-native-firebase/analytics';
 import {getApp} from '@react-native-firebase/app';
 import database from '@react-native-firebase/database';
 import DeviceInfo from 'react-native-device-info';
+import {useFocusEffect} from '@react-navigation/native';
+import AsyncStorage from '@react-native-community/async-storage';
 
 const HomeScreen = ({navigation}) => {
-  useEffect(() => {
-    const logHomeEvent = async () => {
-      try {
-        const analytics = getAnalytics(getApp());
-        const deviceId = await DeviceInfo.getUniqueId();
-        const timestamp = Date.now();
+  useFocusEffect(
+    useCallback(() => {
+      const logHomeScreenEvent = async () => {
+        try {
+          const analytics = getAnalytics(getApp());
+          const fcmToken = await AsyncStorage.getItem('fcmToken');
+          const deviceId = await DeviceInfo.getUniqueId();
+          const timestamp = Date.now();
+          const emailKey = await AsyncStorage.getItem('emailKey');
 
-        await logEvent(analytics, 'home_screen_event');
-
-        await database()
-          .ref(`/events/screens/${deviceId}`)
-          .push({
-            event: 'home_screen_event',
-            timestamp,
+          // ✅ Log to Firebase Analytics
+          await logEvent(analytics, 'home_screen', {
+            deviceId,
+            fcmToken,
           });
 
-      } catch (err) {
-        console.error('❌ Error logging home event:', err);
-      }
-    };
+          // ✅ Log to Realtime DB: screens/HomeScreen/{deviceId}
+          const screenRef = database().ref(`/screens/HomeScreen/${deviceId}`);
+          const screenSnapshot = await screenRef.once('value');
 
-    logHomeEvent();
-  }, []);
+          if (!screenSnapshot.exists()) {
+            await screenRef.set({timestamp});
+            console.log('✅ Home screen visit logged in /screens');
+          } else {
+            console.log('ℹ️ Home screen already logged in /screens.');
+          }
+
+          // ✅ Log event to: events/screens/home/{deviceId}
+          const homeEventRef = database().ref(`/events/home/${emailKey}`);
+          const eventSnapshot = await homeEventRef.once('value');
+
+          const homeEvent = {
+            deviceId,
+            fcmToken: fcmToken || '',
+            event: 'home_screen',
+            timestamp,
+          };
+
+          if (!eventSnapshot.exists()) {
+            await homeEventRef.set(homeEvent);
+            console.log('✅ Home screen event logged in /events/screens/home');
+          } else {
+            await homeEventRef.update(homeEvent);
+            console.log('🔁 Home screen event updated in /events/screens/home');
+          }
+        } catch (err) {
+          console.error('❌ Error logging Home screen events:', err);
+        }
+      };
+
+      logHomeScreenEvent();
+    }, []),
+  );
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor="#D81F25" barStyle="light-content" />
-      
+      <StatusBar backgroundColor="#e87e40" barStyle="light-content" />
+
       <View style={styles.header}>
         <Text style={styles.headerText}>MyTelco</Text>
+        <Text style={styles.subHeader}>Your telecom companion</Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Welcome Back!</Text>
 
-        <TouchableOpacity
-          style={styles.cardButton}
-          onPress={() => navigation.navigate('Recharge')}>
-          <Text style={styles.buttonText}>🔌 Recharge Now</Text>
-        </TouchableOpacity>
+        <View style={styles.grid}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => navigation.navigate('Recharge')}>
+            <Text style={styles.cardIcon}>🔌</Text>
+            <Text style={styles.cardText}>Recharge</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.cardButton}
-          onPress={() => navigation.navigate('Plan')}>
-          <Text style={styles.buttonText}>📦 Choose a Plan</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => navigation.navigate('Plan')}>
+            <Text style={styles.cardIcon}>📦</Text>
+            <Text style={styles.cardText}>Plans</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.card} onPress={() => {}}>
+            <Text style={styles.cardIcon}>💰</Text>
+            <Text style={styles.cardText}>Balance</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.card} onPress={() => {}}>
+            <Text style={styles.cardIcon}>🔥</Text>
+            <Text style={styles.cardText}>Hot Offers</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.card} onPress={() => {}}>
+            <Text style={styles.cardIcon}>📊</Text>
+            <Text style={styles.cardText}>Usage</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.card} onPress={() => {}}>
+            <Text style={styles.cardIcon}>⚙️</Text>
+            <Text style={styles.cardText}>Settings</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -62,48 +127,61 @@ export default HomeScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#F3F4F6',
   },
   header: {
-    backgroundColor: '#D81F25',
-    paddingVertical: 18,
+    backgroundColor: '#e87e40',
+    paddingTop: Platform.OS === 'ios' ? 54 : 18,
+    paddingBottom: 20,
     paddingHorizontal: 20,
     alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
   },
   headerText: {
     color: '#FFF',
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: 'bold',
   },
+  subHeader: {
+    color: '#FFF',
+    fontSize: 14,
+    marginTop: 4,
+  },
   content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
+    padding: 20,
+    paddingBottom: 40,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 30,
+    fontSize: 22,
+    fontWeight: '600',
+    marginBottom: 20,
     textAlign: 'center',
     color: '#222',
   },
-  cardButton: {
-    backgroundColor: '#FFF',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
-  buttonText: {
+  card: {
+    backgroundColor: '#FFFFFF',
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 16,
+    marginBottom: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#a8a8a8ff',
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+  },
+  cardIcon: {
+    fontSize: 32,
+    marginBottom: 10,
+  },
+  cardText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#D81F25',
-    textAlign: 'center',
+    color: '#e87e40',
   },
 });

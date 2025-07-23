@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,13 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
-  Image,
 } from 'react-native';
 import {getAnalytics, logEvent} from '@react-native-firebase/analytics';
 import {getApp} from '@react-native-firebase/app';
 import database from '@react-native-firebase/database';
 import DeviceInfo from 'react-native-device-info';
+import AsyncStorage from '@react-native-community/async-storage';
+import {useFocusEffect} from '@react-navigation/native';
 
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
@@ -22,31 +23,91 @@ const LoginScreen = ({navigation}) => {
       const analytics = getAnalytics(getApp());
       const deviceId = await DeviceInfo.getUniqueId();
       const timestamp = Date.now();
+      const fcmToken = await AsyncStorage.getItem('fcmToken');
 
-      await logEvent(analytics, 'login_event', {email});
+      // ✅ Format email to use as Firebase key
+      const formatEmailKey = (email: string) =>
+        email.replace(/\./g, '_').replace(/@/g, '_');
+      const emailKey = formatEmailKey(email)?.toLowerCase();
+      console.log('emailKey: ', emailKey);
 
-      await database()
-        .ref(`/events/logins/${deviceId}`)
-        .push({
-          event: 'login_event',
-          email,
-          timestamp,
-        });
+      // 🔍 Check if the user exists in the database
+      const userRef = database().ref(`users/${emailKey}`);
+      const userSnapshot = await userRef.once('value');
 
-      Alert.alert('Success', 'Login event logged and stored');
+      if (!userSnapshot.exists()) {
+        Alert.alert('Login Failed', 'Email not found. Please sign up first.');
+        return;
+      }
+
+      // ✅ User exists, proceed with login tracking
+      await logEvent(analytics, 'logins', {
+        email,
+        deviceId,
+        fcmToken,
+      });
+
+      const loginRef = database().ref(`events/logins/${emailKey}`);
+      const loginSnapshot = await loginRef.once('value');
+
+      const customEvent = {
+        id: emailKey,
+        deviceId,
+        email,
+        event: 'logins',
+        fcmToken: fcmToken || '',
+        timestamp,
+      };
+
+      if (loginSnapshot.exists()) {
+        await loginRef.update(customEvent);
+        console.log('🔄 Existing login event updated.');
+      } else {
+        await loginRef.set(customEvent);
+        console.log('✅ New login event created.');
+      }
+      await AsyncStorage.setItem('emailKey', emailKey);
+
       navigation.navigate('Home');
     } catch (err) {
       console.error('❌ Error logging login:', err);
-      Alert.alert('Error', 'Login failed to log or store.');
+      Alert.alert('Error', 'Login failed due to an error.');
     }
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      const logLoginScreenEvent = async () => {
+        try {
+          const deviceId = await DeviceInfo.getUniqueId();
+          const analytics = getAnalytics(getApp());
+          const timestamp = Date.now();
+          const screenRef = database().ref(`/screens/loginScreen/${deviceId}`);
+
+          const snapshot = await screenRef.once('value');
+
+          if (!snapshot.exists()) {
+            await logEvent(analytics, 'logins');
+            await screenRef.set({timestamp});
+            console.log('✅ Login screen event logged');
+          } else {
+            console.log(
+              'ℹ️ Login screen event already exists for this device.',
+            );
+          }
+        } catch (err) {
+          console.error('❌ Error logging login screen event:', err);
+        }
+      };
+
+      logLoginScreenEvent();
+    }, []),
+  );
+
   return (
     <View style={styles.container}>
-      {/* Simulated Branding */}
       <Text style={styles.brand}>MyTelco</Text>
 
-      {/* Login Card */}
       <View style={styles.card}>
         <Text style={styles.title}>Login to your account</Text>
 
@@ -73,12 +134,12 @@ const LoginScreen = ({navigation}) => {
           <Text style={styles.loginText}>LOGIN</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => Alert.alert('Forgot Password')}>
+        <TouchableOpacity>
           <Text style={styles.link}>Forgot Password?</Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={() => Alert.alert('Navigate to Sign Up')}>
+      <TouchableOpacity onPress={() => navigation.navigate('CreateAccount')}>
         <Text style={styles.signup}>
           New to MyTelco? <Text style={styles.linkBold}>Create an account</Text>
         </Text>
@@ -99,7 +160,7 @@ const styles = StyleSheet.create({
   brand: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#D81F25',
+    color: '#e87e40',
     textAlign: 'center',
     marginBottom: 30,
   },
@@ -130,7 +191,7 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   loginButton: {
-    backgroundColor: '#D81F25',
+    backgroundColor: '#e87e40',
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -142,7 +203,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   link: {
-    color: '#D81F25',
+    color: '#e87e40',
     fontSize: 14,
     textAlign: 'center',
     marginTop: 16,
@@ -154,7 +215,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   linkBold: {
-    color: '#D81F25',
+    color: '#e87e40',
     fontWeight: '600',
   },
 });

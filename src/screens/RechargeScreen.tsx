@@ -1,48 +1,113 @@
-import React from 'react';
-import {View, Text, TouchableOpacity, Alert, StyleSheet} from 'react-native';
+import React, {useCallback} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Alert,
+  StyleSheet,
+  StatusBar,
+  Platform,
+} from 'react-native';
 import {getAnalytics, logEvent} from '@react-native-firebase/analytics';
 import {getApp} from '@react-native-firebase/app';
 import database from '@react-native-firebase/database';
 import DeviceInfo from 'react-native-device-info';
+import {useFocusEffect} from '@react-navigation/native';
+import AsyncStorage from '@react-native-community/async-storage';
 
 const RechargeScreen = () => {
-  const handleRecharge = async () => {
-    try {
-      const analytics = getAnalytics(getApp());
-      const deviceId = await DeviceInfo.getUniqueId(); // ✅ ensure it's a string
-      const transactionId = Math.floor(Math.random() * 1000000);
-      const timestamp = Date.now();
 
-      // 1. Log event to Firebase Analytics
-      await logEvent(analytics, 'recharge_event', {
-        amount: 100,
-        method: 'credit_card',
+useFocusEffect(
+  useCallback(() => {
+    const logRechargeScreenEvent = async () => {
+      try {
+        const deviceId = await DeviceInfo.getUniqueId();
+        const analytics = getAnalytics(getApp());
+        const timestamp = Date.now();
+        const screenRef = database().ref(`/screens/rechargeScreen/${deviceId}`);
+
+        const snapshot = await screenRef.once('value');
+
+        if (!snapshot.exists()) {
+          await logEvent(analytics, 'recharge_screen_event');
+          await screenRef.set({timestamp});
+          console.log('✅ Login screen event logged');
+        } else {
+          console.log('ℹ️ Login screen event already exists for this device.');
+        }
+      } catch (err) {
+        console.error('❌ Error logging login screen event:', err);
+      }
+    };
+
+    logRechargeScreenEvent();
+  }, [])
+);
+
+const handleRecharge = async () => {
+  try {
+    const analytics = getAnalytics(getApp());
+    const deviceId = await DeviceInfo.getUniqueId();
+    const fcmToken = await AsyncStorage.getItem('fcmToken');
+    const emailKey = await AsyncStorage.getItem('emailKey');
+
+    if (!emailKey) {
+      Alert.alert('Login Required', 'User information not found. Please log in again.');
+      return;
+    }
+
+    const transactionId = `TXN-${Math.floor(Math.random() * 1_000_000)}`;
+    const timestamp = Date.now();
+    const amount = 100;
+    const method = 'credit_card';
+
+    // 🔥 Log to Firebase Analytics
+    await logEvent(analytics, 'recharge_event', {
+      emailKey,
+      amount,
+      method,
+      transactionId,
+    });
+
+    // 📝 Save to Realtime Database using set (replace existing if exists)
+    await database()
+      .ref(`/events/recharges/${emailKey}`)
+      .set({
+        event: 'recharge_event',
+        amount,
+        method,
+        transactionId,
+        timestamp,
+        deviceId,
+        fcmToken: fcmToken || '',
       });
 
-      // 2. Save to Realtime Database
-      await database()
-        .ref(`/events/recharges/${deviceId}`)
-        .push({
-          event: 'recharge_event',
-          amount: 100,
-          method: 'credit_card',
-          transactionId,
-          timestamp,
-        });
+    Alert.alert('✅ Success', 'Recharge Successfully Completed');
+  } catch (error) {
+    console.error('❌ Error saving recharge to DB:', error);
+    Alert.alert('⚠️ Error', 'Recharge failed to log or store.');
+  }
+};
 
-      Alert.alert('Recharge Logged', 'Recharge event sent and stored in DB');
-    } catch (error) {
-      console.error('❌ Error saving recharge to DB:', error);
-      Alert.alert('Error', 'Recharge failed to log or store.');
-    }
-  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Recharge</Text>
-      <TouchableOpacity style={styles.button} onPress={handleRecharge}>
-        <Text style={styles.text}>Recharge Now</Text>
-      </TouchableOpacity>
+      <StatusBar backgroundColor="#e87e40" barStyle="light-content" />
+      <View style={styles.header}>
+        <Text style={styles.headerText}>Recharge</Text>
+        <Text style={styles.subHeader}>Quick Top-Up</Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>💳 Recharge Amount</Text>
+        <Text style={styles.amount}>₹100</Text>
+
+        <TouchableOpacity
+          style={styles.rechargeButton}
+          onPress={handleRecharge}>
+          <Text style={styles.buttonText}>Recharge Now</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -50,13 +115,60 @@ const RechargeScreen = () => {
 export default RechargeScreen;
 
 const styles = StyleSheet.create({
-  container: {flex: 1, justifyContent: 'center', alignItems: 'center'},
-  button: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: '#1F2155',
-    borderRadius: 8,
+  container: {
+    flex: 1,
+    backgroundColor: '#F4F5F7',
   },
-  text: {color: '#fff', fontSize: 16},
-  title: {fontSize: 24, fontWeight: 'bold'},
+  header: {
+    backgroundColor: '#e87e40',
+      paddingTop: Platform.OS === 'ios' ? 54 : 18,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  headerText: {
+    color: '#FFF',
+    fontSize: 26,
+    fontWeight: 'bold',
+  },
+  subHeader: {
+    color: '#FFF',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  card: {
+    margin: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+  },
+  cardTitle: {
+    fontSize: 18,
+    color: '#444',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  amount: {
+    fontSize: 32,
+    color: '#0e0e0eff',
+    fontWeight: 'bold',
+    marginBottom: 24,
+  },
+  rechargeButton: {
+    backgroundColor: '#F3901D',
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 10,
+    elevation: 3,
+  },
+  buttonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
