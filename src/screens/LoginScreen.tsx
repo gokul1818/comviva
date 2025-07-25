@@ -53,6 +53,7 @@ const LoginScreen = ({navigation}) => {
         timestamp,
       };
 
+      await userRef.update({fcmToken: fcmToken || ''});
       if (loginSnapshot.exists()) {
         await loginRef.update(customEvent);
         console.log('🔄 Existing login event updated.');
@@ -77,9 +78,19 @@ const LoginScreen = ({navigation}) => {
           // const analytics = getAnalytics(getApp());
           const timestamp = Date.now();
           const screenRef = database().ref(`/screens/loginScreen/${deviceId}`);
+          const emailKey = await AsyncStorage.getItem('emailKey');
+
+          const loginRef = database().ref(`events/logins/${emailKey}`);
+          const loginSnapshot = await loginRef.once('value');
 
           const snapshot = await screenRef.once('value');
+          if (loginSnapshot.exists()) {
+            const userRef = database().ref(`users/${emailKey}`);
+            await userRef.update({fcmToken: ''});
 
+            await loginRef.update({fcmToken: ''});
+            console.log('🔄 Existing login event updated.');
+          }
           if (!snapshot.exists()) {
             // await logEvent(analytics, 'logins');
             await screenRef.set({timestamp});
