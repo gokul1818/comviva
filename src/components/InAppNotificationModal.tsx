@@ -65,6 +65,8 @@ const InAppNotificationModal: React.FC<InAppNotificationModalProps> = ({
   const handleButtonClick = async (deeplink, event) => {
     const deviceId = await DeviceInfo.getUniqueId();
     const emailKey = await AsyncStorage.getItem('emailKey');
+    const fcmToken = await AsyncStorage.getItem('fcmToken');
+
     const timestamp = Date.now();
 
     if (deeplink) {
@@ -77,10 +79,22 @@ const InAppNotificationModal: React.FC<InAppNotificationModalProps> = ({
       const screenSnapshot = await screenRef.once('value');
 
       if (!screenSnapshot.exists()) {
-        await screenRef.set({timestamp, action: deeplink, deviceId,emailKey});
+        await screenRef.set({
+          timestamp,
+          action: deeplink,
+          fcmToken,
+          deviceId,
+          emailKey,
+        });
         console.log('✅ Home screen visit logged in /screens');
       } else {
-        await screenRef.set({timestamp, action: deeplink, deviceId, emailKey});
+        await screenRef.set({
+          timestamp,
+          action: deeplink,
+          fcmToken,
+          deviceId,
+          emailKey,
+        });
 
         console.log('ℹ️ Home screen already logged in /screens.');
       }

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-community/async-storage';
 import database from '@react-native-firebase/database';
-import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import {useFocusEffect} from '@react-navigation/native';
+import React, {useCallback, useState} from 'react';
 import {
   Alert,
   StyleSheet,
@@ -18,6 +18,9 @@ const LoginScreen = ({navigation}) => {
 
   const handleLogin = async () => {
     try {
+      if (!email || !password) {
+        return;
+      }
       // const analytics = getAnalytics(getApp());
       const deviceId = await DeviceInfo.getUniqueId();
       const timestamp = Date.now();
@@ -37,13 +40,6 @@ const LoginScreen = ({navigation}) => {
         Alert.alert('Login Failed', 'Email not found. Please sign up first.');
         return;
       }
-
-      // ✅ User exists, proceed with login tracking
-      // await logEvent(analytics, 'logins', {
-      //   email,
-      //   deviceId,
-      //   fcmToken,
-      // });
 
       const loginRef = database().ref(`events/logins/${emailKey}`);
       const loginSnapshot = await loginRef.once('value');
@@ -89,7 +85,7 @@ const LoginScreen = ({navigation}) => {
             await screenRef.set({timestamp});
             console.log('✅ Login screen event logged');
           } else {
-             await screenRef.update({timestamp});
+            await screenRef.update({timestamp});
             console.log(
               'ℹ️ Login screen event already exists for this device.',
             );
