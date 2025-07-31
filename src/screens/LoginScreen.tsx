@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-community/async-storage';
-import database from '@react-native-firebase/database';
+import database, {getDatabase, ref} from '@react-native-firebase/database';
 import {useFocusEffect} from '@react-navigation/native';
 import React, {useCallback, useState} from 'react';
 import {
@@ -11,6 +11,8 @@ import {
   View,
 } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
+import {generateUUID} from '../helpers';
+import {getApp} from '@react-native-firebase/app';
 
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
@@ -21,7 +23,7 @@ const LoginScreen = ({navigation}) => {
       if (!email || !password) {
         return;
       }
-      // const analytics = getAnalytics(getApp());
+
       const deviceId = await DeviceInfo.getUniqueId();
       const timestamp = Date.now();
       const fcmToken = await AsyncStorage.getItem('fcmToken');
@@ -41,28 +43,44 @@ const LoginScreen = ({navigation}) => {
         return;
       }
 
-      const loginRef = database().ref(`events/logins/${emailKey}`);
-      const loginSnapshot = await loginRef.once('value');
+      // 🆕 Create unique login entry using timestamp + unique ID
+      const uniqueId = generateUUID();
+      const loginEntryKey = `${timestamp}_${uniqueId}`; // Creates unique key each time
 
+      // Reference to new login entry (not overwriting existing ones)
+      const newLoginRef = database().ref(
+        `events/${uniqueId}`,
+      );
+
+      const createdAt = new Date().toISOString();
+      const userData = userSnapshot.val();
+      const userId = userData?.user_id || generateUUID();
+
+      // Login event data
       const customEvent = {
-        id: emailKey,
-        deviceId,
-        email,
+        unique_id: uniqueId,
+        user_id: userId,
+        device_token: deviceId,
+        email: email,
         event: 'logins',
-        fcmToken: fcmToken || '',
-        timestamp,
+        screen_name: 'logins',
+        fcm_token: fcmToken || '',
+        email_id: email.replace('@', '_').replace('.', '_'),
+        timestamp: timestamp.toString(),
+        count: 0,
+        notification_status: 'pending',
+        createdAt: createdAt,
+        updatedAt: createdAt,
       };
 
+      // Update user's FCM token
       await userRef.update({fcmToken: fcmToken || ''});
-      if (loginSnapshot.exists()) {
-        await loginRef.update(customEvent);
-        console.log('🔄 Existing login event updated.');
-      } else {
-        await loginRef.set(customEvent);
-        console.log('✅ New login event created.');
-      }
-      await AsyncStorage.setItem('emailKey', emailKey);
 
+      // ✅ Always create NEW login entry
+      await newLoginRef.set(customEvent);
+      console.log('✅ New login event created with key:', loginEntryKey);
+
+      await AsyncStorage.setItem('emailKey', emailKey);
       navigation.navigate('Home');
     } catch (err) {
       console.error('❌ Error logging login:', err);
@@ -74,32 +92,19 @@ const LoginScreen = ({navigation}) => {
     useCallback(() => {
       const logLoginScreenEvent = async () => {
         try {
-          const deviceId = await DeviceInfo.getUniqueId();
-          // const analytics = getAnalytics(getApp());
           const timestamp = Date.now();
-          const screenRef = database().ref(`/screens/loginScreen/${deviceId}`);
+          const screenRef = database().ref(`/screens/logins`);
+          const eventlistRef = database().ref(`/eventList/logins`);
+          await eventlistRef.set({timestamp, eventName: 'logins'});
+          await screenRef.set({timestamp});
           const emailKey = await AsyncStorage.getItem('emailKey');
-
           const loginRef = database().ref(`events/logins/${emailKey}`);
           const loginSnapshot = await loginRef.once('value');
-
-          const snapshot = await screenRef.once('value');
           if (loginSnapshot.exists()) {
             const userRef = database().ref(`users/${emailKey}`);
             await userRef.update({fcmToken: ''});
-
             await loginRef.update({fcmToken: ''});
             console.log('🔄 Existing login event updated.');
-          }
-          if (!snapshot.exists()) {
-            // await logEvent(analytics, 'logins');
-            await screenRef.set({timestamp});
-            console.log('✅ Login screen event logged');
-          } else {
-            await screenRef.update({timestamp});
-            console.log(
-              'ℹ️ Login screen event already exists for this device.',
-            );
           }
         } catch (err) {
           console.error('❌ Error logging login screen event:', err);

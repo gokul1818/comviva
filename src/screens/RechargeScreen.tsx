@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-community/async-storage';
-import { getAnalytics } from '@react-native-firebase/analytics';
-import { getApp } from '@react-native-firebase/app';
+import {getAnalytics} from '@react-native-firebase/analytics';
+import {getApp} from '@react-native-firebase/app';
 import database from '@react-native-firebase/database';
-import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback } from 'react';
+import {useFocusEffect} from '@react-navigation/native';
+import React, {useCallback} from 'react';
 import {
   Alert,
   Platform,
@@ -16,76 +16,71 @@ import {
 import DeviceInfo from 'react-native-device-info';
 
 const RechargeScreen = () => {
-
-useFocusEffect(
-  useCallback(() => {
-    const logRechargeScreenEvent = async () => {
-      try {
-        const deviceId = await DeviceInfo.getUniqueId();
-        const timestamp = Date.now();
-        const screenRef = database().ref(`/screens/rechargeScreen/${deviceId}`);
-        const snapshot = await screenRef.once('value');
-        if (!snapshot.exists()) {
+  useFocusEffect(
+    useCallback(() => {
+      const logRechargeScreenEvent = async () => {
+        try {
+          const timestamp = Date.now();
+          const screenRef = database().ref(`/screens/recharge_success`);
+          const eventlistRef = database().ref(`/eventList/recharge_success`);
+          await eventlistRef.set({timestamp, eventName: 'recharge_success'});
           await screenRef.set({timestamp});
-          console.log('✅ Login screen event logged');
-        } else {
-             await screenRef.update({timestamp});
-          console.log('ℹ️ Login screen event already exists for this device.');
+        } catch (err) {
+          console.error('❌ Error logging login screen event:', err);
         }
-      } catch (err) {
-        console.error('❌ Error logging login screen event:', err);
+      };
+
+      logRechargeScreenEvent();
+    }, []),
+  );
+
+  const handleRecharge = async () => {
+    try {
+      const analytics = getAnalytics(getApp());
+      const deviceId = await DeviceInfo.getUniqueId();
+      const fcmToken = await AsyncStorage.getItem('fcmToken');
+      const emailKey = await AsyncStorage.getItem('emailKey');
+
+      if (!emailKey) {
+        Alert.alert(
+          'Login Required',
+          'User information not found. Please log in again.',
+        );
+        return;
       }
-    };
 
-    logRechargeScreenEvent();
-  }, [])
-);
+      const transactionId = `TXN-${Math.floor(Math.random() * 1_000_000)}`;
+      const timestamp = Date.now();
+      const amount = 100;
+      const method = 'credit_card';
 
-const handleRecharge = async () => {
-  try {
-    const analytics = getAnalytics(getApp());
-    const deviceId = await DeviceInfo.getUniqueId();
-    const fcmToken = await AsyncStorage.getItem('fcmToken');
-    const emailKey = await AsyncStorage.getItem('emailKey');
+      // 🔥 Log to Firebase Analytics
+      // await logEvent(analytics, 'recharge_event', {
+      //   emailKey,
+      //   amount,
+      //   method,
+      //   transactionId,
+      // });
 
-    if (!emailKey) {
-      Alert.alert('Login Required', 'User information not found. Please log in again.');
-      return;
+      // 📝 Save to Realtime Database using set (replace existing if exists)
+      await database()
+        .ref(`/events/recharges/${emailKey}`)
+        .set({
+          event: 'recharge_success',
+          amount,
+          method,
+          transactionId,
+          timestamp,
+          deviceId,
+          fcmToken: fcmToken || '',
+        });
+
+      Alert.alert('✅ Success', 'Recharge Successfully Completed');
+    } catch (error) {
+      console.error('❌ Error saving recharge to DB:', error);
+      Alert.alert('⚠️ Error', 'Recharge failed to log or store.');
     }
-
-    const transactionId = `TXN-${Math.floor(Math.random() * 1_000_000)}`;
-    const timestamp = Date.now();
-    const amount = 100;
-    const method = 'credit_card';
-
-    // 🔥 Log to Firebase Analytics
-    // await logEvent(analytics, 'recharge_event', {
-    //   emailKey,
-    //   amount,
-    //   method,
-    //   transactionId,
-    // });
-
-    // 📝 Save to Realtime Database using set (replace existing if exists)
-    await database()
-      .ref(`/events/recharges/${emailKey}`)
-      .set({
-        event: 'recharge_success',
-        amount,
-        method,
-        transactionId,
-        timestamp,
-        deviceId,
-        fcmToken: fcmToken || '',
-      });
-
-    Alert.alert('✅ Success', 'Recharge Successfully Completed');
-  } catch (error) {
-    console.error('❌ Error saving recharge to DB:', error);
-    Alert.alert('⚠️ Error', 'Recharge failed to log or store.');
-  }
-};
-
+  };
 
   return (
     <View style={styles.container}>
@@ -118,7 +113,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#e87e40',
-      paddingTop: Platform.OS === 'ios' ? 54 : 28,
+    paddingTop: Platform.OS === 'ios' ? 54 : 28,
     paddingBottom: 20,
     paddingHorizontal: 20,
     alignItems: 'center',

@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-community/async-storage';
-import { getAnalytics } from '@react-native-firebase/analytics';
-import { getApp } from '@react-native-firebase/app';
+import {getAnalytics} from '@react-native-firebase/analytics';
+import {getApp} from '@react-native-firebase/app';
 import database from '@react-native-firebase/database';
-import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback } from 'react';
+import {useFocusEffect} from '@react-navigation/native';
+import React, {useCallback} from 'react';
 import {
   Alert,
   FlatList,
@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
+import { generateUUID } from '../helpers';
 
 const plans = [
   {id: '1', name: 'Basic Plan', price: 99},
@@ -29,23 +30,11 @@ const PlanScreen = () => {
     useCallback(() => {
       const logPlanScreenEvent = async () => {
         try {
-          const deviceId = await DeviceInfo.getUniqueId();
-          const analytics = getAnalytics(getApp());
           const timestamp = Date.now();
-          const screenRef = database().ref(`/screens/planScreen/${deviceId}`);
-
-          const snapshot = await screenRef.once('value');
-
-          if (!snapshot.exists()) {
-            // await logEvent(analytics, 'plan_screen_event');
-            await screenRef.set({timestamp});
-            console.log('✅ Login screen event logged');
-          } else {
-             await screenRef.update({timestamp});
-            console.log(
-              'ℹ️ Login screen event already exists for this device.',
-            );
-          }
+          const screenRef = database().ref(`/screens/purchase_success`);
+          const eventlistRef = database().ref(`/eventList/purchase_success`);
+          await eventlistRef.set({timestamp, eventName: 'purchase_success'});
+          await screenRef.set({timestamp});
         } catch (err) {
           console.error('❌ Error logging login screen event:', err);
         }
@@ -75,30 +64,32 @@ const PlanScreen = () => {
         );
         return;
       }
+     const userRef = database().ref(`users/${emailKey}`);
+          const userSnapshot = await userRef.once('value');
+          const createdAt = new Date().toISOString();
+          const userData = userSnapshot.val();
+          const {user_id, email} = userData;
+          const uniqueId = generateUUID();
 
-      // 🔥 Log to Firebase Analytics
-      // await logEvent(analytics, 'purchase_event', {
-      //   item: plan.name,
-      //   price: plan.price,
-      // });
+        const planEvent = {
+            unique_id: uniqueId,
+            user_id: user_id,
+            device_token: deviceId,
+            email: email,
+            event: 'purchase_success',
+            screen_name: 'purchase_success',
+            fcm_token: fcmToken || '',
+            email_id: email.replace('@', '_').replace('.', '_'),
+            timestamp: timestamp.toString(),
+            count: 0,
+            notification_status: 'pending',
+            createdAt: createdAt,
+            updatedAt: createdAt,
+          };
 
-      // await logEvent(analytics, 'purchase_success_event', {
-      //   success: true,
-      //   transaction_id: transactionId,
-      // });
-
-      // 📝 Save to Firebase Realtime Database under a fixed path
       await database()
         .ref(`/events/purchases/${emailKey}`)
-        .set({
-          event: 'purchase_success',
-          planName: plan.name,
-          price: plan.price,
-          transactionId,
-          timestamp,
-          deviceId,
-          fcmToken: fcmToken || '',
-        });
+        .set(planEvent);
 
       Alert.alert('✅ Success', `${plan.name} purchased`);
     } catch (error) {

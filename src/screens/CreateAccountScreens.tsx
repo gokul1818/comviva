@@ -13,6 +13,7 @@ import database from '@react-native-firebase/database';
 import DeviceInfo from 'react-native-device-info';
 import AsyncStorage from '@react-native-community/async-storage';
 import {useFocusEffect} from '@react-navigation/native';
+import {generateUUID} from '../helpers';
 
 const CreateAccountScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
@@ -21,7 +22,7 @@ const CreateAccountScreen = ({navigation}) => {
 
   const handleSignup = async () => {
     try {
-      const analytics = getAnalytics(getApp());
+      // const analytics = getAnalytics(getApp());
       const deviceId = await DeviceInfo.getUniqueId();
       const timestamp = Date.now();
       const fcmToken = await AsyncStorage.getItem('fcmToken');
@@ -34,6 +35,8 @@ const CreateAccountScreen = ({navigation}) => {
       const userRef = database().ref(`users/${emailKey}`);
       const snapshot = await userRef.once('value');
 
+      const userId = generateUUID();
+
       const customEvent = {
         id: deviceId,
         deviceId: deviceId || 'unknown_device',
@@ -42,6 +45,7 @@ const CreateAccountScreen = ({navigation}) => {
         event: 'signups',
         fcmToken: fcmToken || '',
         timestamp,
+        user_id: userId,
       };
 
       if (snapshot.exists()) {
@@ -68,23 +72,11 @@ const CreateAccountScreen = ({navigation}) => {
     useCallback(() => {
       const logSignupScreenEvent = async () => {
         try {
-          const deviceId = await DeviceInfo.getUniqueId();
-          const analytics = getAnalytics(getApp());
           const timestamp = Date.now();
-          const screenRef = database().ref(`/screens/signupScreen/${deviceId}`);
-
-          const snapshot = await screenRef.once('value');
-
-          if (!snapshot.exists()) {
-            await logEvent(analytics, 'signup_screen');
-            await screenRef.set({timestamp});
-            console.log('✅ Signup screen event logged');
-          } else {
-            await screenRef.update({timestamp});
-            console.log(
-              'ℹ️ Signup screen event already exists for this device.',
-            );
-          }
+          const screenRef = database().ref(`/screens/signups`);
+          const eventlistRef = database().ref(`/eventList/signups`);
+          await eventlistRef.set({timestamp, eventName: 'signups'});
+          await screenRef.set({timestamp});
         } catch (err) {
           console.error('❌ Error logging signup screen event:', err);
         }

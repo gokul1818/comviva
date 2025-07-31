@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-community/async-storage';
-import { getAnalytics } from '@react-native-firebase/analytics';
-import { getApp } from '@react-native-firebase/app';
+import {getAnalytics} from '@react-native-firebase/analytics';
+import {getApp} from '@react-native-firebase/app';
 import database from '@react-native-firebase/database';
-import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback } from 'react';
+import {useFocusEffect} from '@react-navigation/native';
+import React, {useCallback} from 'react';
 import {
   Platform,
   ScrollView,
@@ -14,45 +14,47 @@ import {
   View,
 } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
+import {generateUUID} from '../helpers';
 
 const HomeScreen = ({navigation}) => {
   useFocusEffect(
     useCallback(() => {
       const logHomeScreenEvent = async () => {
         try {
-          const analytics = getAnalytics(getApp());
           const fcmToken = await AsyncStorage.getItem('fcmToken');
           const deviceId = await DeviceInfo.getUniqueId();
           const timestamp = Date.now();
           const emailKey = await AsyncStorage.getItem('emailKey');
-
-          // ✅ Log to Firebase Analytics
-          // await logEvent(analytics, 'home_screen', {
-          //   deviceId,
-          //   fcmToken,
-          // });
+          const uniqueId = generateUUID();
 
           // ✅ Log to Realtime DB: screens/HomeScreen/{deviceId}
-          const screenRef = database().ref(`/screens/HomeScreen/${emailKey}`);
-          const screenSnapshot = await screenRef.once('value');
-
-          if (!screenSnapshot.exists()) {
-            await screenRef.set({timestamp});
-            console.log('✅ Home screen visit logged in /screens');
-          } else {
-            await screenRef.update({timestamp});
-            console.log('ℹ️ Home screen already logged in /screens.');
-          }
-
+          const screenRef = database().ref(`/screens/home_screen`);
+          const eventlistRef = database().ref(`/eventList/home_screen`);
+          await eventlistRef.set({timestamp, eventName: 'home_screen'});
+          await screenRef.set({timestamp});
           // ✅ Log event to: events/screens/home/{deviceId}
-          const homeEventRef = database().ref(`/events/home/${emailKey}`);
+          const homeEventRef = database().ref(`events/${uniqueId}`);
           const eventSnapshot = await homeEventRef.once('value');
+          const userRef = database().ref(`users/${emailKey}`);
+          const userSnapshot = await userRef.once('value');
+          const createdAt = new Date().toISOString();
+          const userData = userSnapshot.val();
+          const {user_id, email} = userData;
 
           const homeEvent = {
-            deviceId,
-            fcmToken: fcmToken || '',
+            unique_id: uniqueId,
+            user_id: user_id,
+            device_token: deviceId,
+            email: email,
             event: 'home_screen',
-            timestamp,
+            screen_name: 'home_screen',
+            fcm_token: fcmToken || '',
+            email_id: email.replace('@', '_').replace('.', '_'),
+            timestamp: timestamp.toString(),
+            count: 0,
+            notification_status: 'pending',
+            createdAt: createdAt,
+            updatedAt: createdAt,
           };
 
           if (!eventSnapshot.exists()) {
