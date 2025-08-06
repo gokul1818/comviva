@@ -14,6 +14,7 @@ import DeviceInfo from 'react-native-device-info';
 import AsyncStorage from '@react-native-community/async-storage';
 import {useFocusEffect} from '@react-navigation/native';
 import {generateUUID} from '../helpers';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const CreateAccountScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
@@ -87,7 +88,7 @@ const CreateAccountScreen = ({navigation}) => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaProvider style={styles.container}>
       <Text style={styles.brand}>MyTelco</Text>
 
       <View style={styles.card}>
@@ -129,7 +130,7 @@ const CreateAccountScreen = ({navigation}) => {
           Already have an account? <Text style={styles.linkBold}>Login</Text>
         </Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaProvider>
   );
 };
 

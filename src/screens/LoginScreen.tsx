@@ -4,6 +4,7 @@ import {useFocusEffect} from '@react-navigation/native';
 import React, {useCallback, useState} from 'react';
 import {
   Alert,
+  Image,
   StyleSheet,
   Text,
   TextInput,
@@ -13,7 +14,8 @@ import {
 import DeviceInfo from 'react-native-device-info';
 import {generateUUID} from '../helpers';
 import {getApp} from '@react-native-firebase/app';
-
+import Logo from '../assets/comvivaLogo.png';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,9 +50,7 @@ const LoginScreen = ({navigation}) => {
       const loginEntryKey = `${timestamp}_${uniqueId}`; // Creates unique key each time
 
       // Reference to new login entry (not overwriting existing ones)
-      const newLoginRef = database().ref(
-        `events/${uniqueId}`,
-      );
+      const newLoginRef = database().ref(`events/${uniqueId}`);
 
       const createdAt = new Date().toISOString();
       const userData = userSnapshot.val();
@@ -116,8 +116,11 @@ const LoginScreen = ({navigation}) => {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.brand}>MyTelco</Text>
+    <SafeAreaProvider style={styles.container}>
+      <View style={styles.logoContainer}>
+        <Image style={styles.logoImg} source={Logo} alt="logo" />
+        <Text style={styles.brand}>Comviva</Text>
+      </View>
 
       <View style={styles.card}>
         <Text style={styles.title}>Login to your account</Text>
@@ -138,7 +141,7 @@ const LoginScreen = ({navigation}) => {
           onChangeText={setPassword}
           keyboardType="visible-password"
           placeholderTextColor="#999"
-          secureTextEntry
+          secureTextEntry={true}
         />
 
         <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
@@ -152,10 +155,10 @@ const LoginScreen = ({navigation}) => {
 
       <TouchableOpacity onPress={() => navigation.navigate('CreateAccount')}>
         <Text style={styles.signup}>
-          New to MyTelco? <Text style={styles.linkBold}>Create an account</Text>
+          New to comviva? <Text style={styles.linkBold}>Create an account</Text>
         </Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaProvider>
   );
 };
 
@@ -168,12 +171,23 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: 'center',
   },
+  logoContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap:5,
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  logoImg: {
+    width: '10%',
+    height: '100%',
+  },
   brand: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#e87e40',
     textAlign: 'center',
-    marginBottom: 30,
   },
   card: {
     backgroundColor: '#fff',

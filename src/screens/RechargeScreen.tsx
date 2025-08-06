@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const RechargeScreen = () => {
   useFocusEffect(
@@ -83,8 +84,8 @@ const RechargeScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar backgroundColor="#e87e40" barStyle="light-content" />
+    <SafeAreaProvider style={styles.container}>
+      {/* <StatusBar backgroundColor="#e87e40" barStyle="light-content" /> */}
       <View style={styles.header}>
         <Text style={styles.headerText}>Recharge</Text>
         <Text style={styles.subHeader}>Quick Top-Up</Text>
@@ -100,7 +101,7 @@ const RechargeScreen = () => {
           <Text style={styles.buttonText}>Recharge Now</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaProvider>
   );
 };
 

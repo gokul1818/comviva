@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import { generateUUID } from '../helpers';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const plans = [
   {id: '1', name: 'Basic Plan', price: 99},
@@ -111,8 +112,8 @@ const PlanScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar backgroundColor="#e87e40" barStyle="light-content" />
+    <SafeAreaProvider style={styles.container}>
+      {/* <StatusBar backgroundColor="#e87e40" barStyle="light-content" /> */}
       <View style={styles.header}>
         <Text style={styles.headerText}>Plans</Text>
         <Text style={styles.subHeader}>Choose your best fit</Text>
@@ -124,7 +125,7 @@ const PlanScreen = () => {
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
       />
-    </View>
+    </SafeAreaProvider>
   );
 };
 

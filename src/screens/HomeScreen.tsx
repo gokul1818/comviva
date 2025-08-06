@@ -1,9 +1,7 @@
 import AsyncStorage from '@react-native-community/async-storage';
-import {getAnalytics} from '@react-native-firebase/analytics';
-import {getApp} from '@react-native-firebase/app';
 import database from '@react-native-firebase/database';
-import {useFocusEffect} from '@react-navigation/native';
-import React, {useCallback} from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback } from 'react';
 import {
   Platform,
   ScrollView,
@@ -14,7 +12,8 @@ import {
   View,
 } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
-import {generateUUID} from '../helpers';
+import { generateUUID } from '../helpers';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const HomeScreen = ({navigation}) => {
   useFocusEffect(
@@ -74,16 +73,17 @@ const HomeScreen = ({navigation}) => {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar backgroundColor="#e87e40" barStyle="light-content" />
+    <SafeAreaProvider style={styles.container}>
+
+      {/* <StatusBar backgroundColor="#e87e40" barStyle="light-content" /> */}
 
       <View style={styles.header}>
-        <Text style={styles.headerText}>MyTelco</Text>
+        <Text style={styles.headerText}>Comviva</Text>
         <Text style={styles.subHeader}>Your telecom companion</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Welcome Back!</Text>
+        {/* <Text style={styles.title}>Welcome Back!</Text> */}
 
         <View style={styles.grid}>
           <TouchableOpacity
@@ -121,7 +121,7 @@ const HomeScreen = ({navigation}) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaProvider>
   );
 };
 

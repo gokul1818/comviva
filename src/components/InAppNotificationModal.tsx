@@ -60,13 +60,12 @@ const InAppNotificationModal: React.FC<InAppNotificationModalProps> = ({
     image,
     layoutType = 'card',
   } = data;
-  console.log('data: ', data);
+  console.log('layoutType: ', layoutType);
 
   const handleButtonClick = async (deeplink, event) => {
     const deviceId = await DeviceInfo.getUniqueId();
     const emailKey = await AsyncStorage.getItem('emailKey');
     const fcmToken = await AsyncStorage.getItem('fcmToken');
-
     const timestamp = Date.now();
 
     if (deeplink) {
@@ -78,26 +77,14 @@ const InAppNotificationModal: React.FC<InAppNotificationModalProps> = ({
       );
       const screenSnapshot = await screenRef.once('value');
 
-      if (!screenSnapshot.exists()) {
-        await screenRef.set({
-          timestamp,
-          action: deeplink,
-          fcmToken,
-          deviceId,
-          emailKey,
-        });
-        console.log('✅ Home screen visit logged in /screens');
-      } else {
-        await screenRef.set({
-          timestamp,
-          action: deeplink,
-          fcmToken,
-          deviceId,
-          emailKey,
-        });
-
-        console.log('ℹ️ Home screen already logged in /screens.');
-      }
+      await screenRef.set({
+        timestamp,
+        action: deeplink,
+        fcmToken,
+        deviceId,
+        emailKey,
+      });
+      console.log('✅ Event logged to Firebase');
     }
   };
 
@@ -111,49 +98,61 @@ const InAppNotificationModal: React.FC<InAppNotificationModalProps> = ({
         style={[
           styles.overlay,
           layoutType === 'card' && styles.centeredOverlay,
+          layoutType === 'screenblocker' && styles.screenBlockerOverlay,
         ]}>
         <View
-          style={[styles.container, {backgroundColor: cardBackgroundColor}]}>
+          style={[
+            styles.container,
+            {backgroundColor: cardBackgroundColor},
+            layoutType === 'FULLSCREEN' && styles.fullscreenContainer,
+            layoutType === 'header' && styles.headerContainer,
+            layoutType === 'footer' && styles.footerContainer,
+          ]}>
           {image && (
             <Image
               source={{uri: image}}
-              style={styles.image}
-              resizeMode="cover"
+              style={[
+                styles.image,
+                layoutType === 'FULLSCREEN' && styles.fullscreenImage,
+              ]}
+              resizeMode="contain"
             />
           )}
-          <Text style={[styles.title, {color: titleTextColor}]}>
-            {title || 'Notification'}
-          </Text>
-          <Text style={[styles.body, {color: bodyTextColor}]}>
-            {body || 'You have a new message.'}
-          </Text>
+          {Boolean(title) && (
+            <Text style={[styles.title, {color: titleTextColor}]}>{title}</Text>
+          )}
+          {Boolean(body) && (
+            <Text style={[styles.body, {color: bodyTextColor}]}>{body}</Text>
+          )}
 
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              onPress={() => {
-                if (handleButtonClick) {
-                  handleButtonClick(button2_action, button2Event);
-                }
-                onClose();
-              }}
-              style={[styles.button, {backgroundColor: button2Color}]}>
-              <Text style={[styles.buttonText, {color: button2TextColor}]}>
-                {button2_text}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                if (handleButtonClick) {
-                  handleButtonClick(button1_action, button1Event);
-                }
-                onClose();
-              }}
-              style={[styles.button, {backgroundColor: button1Color}]}>
-              <Text style={[styles.buttonText, {color: button1TextColor}]}>
-                {button1_text}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {layoutType !== 'screenblocker' && (
+            <View style={styles.buttonRow}>
+              {Boolean(button2_text) && (
+                <TouchableOpacity
+                  onPress={() => {
+                    handleButtonClick(button2_action, button2Event);
+                    onClose();
+                  }}
+                  style={[styles.button, {backgroundColor: button2Color}]}>
+                  <Text style={[styles.buttonText, {color: button2TextColor}]}>
+                    {button2_text}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {Boolean(button1_text) && (
+                <TouchableOpacity
+                  onPress={() => {
+                    handleButtonClick(button1_action, button1Event);
+                    onClose();
+                  }}
+                  style={[styles.button, {backgroundColor: button1Color}]}>
+                  <Text style={[styles.buttonText, {color: button1TextColor}]}>
+                    {button1_text}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -165,14 +164,18 @@ export default InAppNotificationModal;
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 80,
+    // paddingTop: 80,
     backgroundColor: 'rgba(0,0,0,0.2)',
   },
   centeredOverlay: {
     justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     paddingTop: 0,
+  },
+  screenBlockerOverlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
   container: {
     width: '90%',
@@ -183,11 +186,45 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  fullscreenContainer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    borderRadius: 0,
+    padding: 24,
+    justifyContent: 'center',
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  headerContainer: {
+    width: '100%',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    padding: 16,
+    position: 'absolute',
+    top: 0,
+  },
+  footerContainer: {
+    width: '100%',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    padding: 16,
+    position: 'absolute',
+    bottom: 0,
+  },
   image: {
     width: '100%',
     height: 150,
     borderRadius: 8,
     marginBottom: 12,
+  },
+  fullscreenImage: {
+    height: 250,
+    borderRadius: 0,
   },
   title: {
     fontSize: 18,
@@ -202,6 +239,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 10,
+    marginTop: 10,
   },
   button: {
     paddingVertical: 10,
